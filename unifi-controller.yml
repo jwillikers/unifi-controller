@@ -67,16 +67,9 @@ spec:
         seLinuxOptions: {}
       workingDir: /usr/lib/unifi
   volumes:
-    # See https://github.com/containers/podman/pull/8497
-    # Uses a named volume using the claimName.
     - name: unifi-data
       persistentVolumeClaim:
         claimName: unifi-controller-data
-    # Creates a named volume using path if it doesn't exist (Not sure if CreateOrDirectory has the same behavior)
-    # - name: unifi-data
-    #   hostPath:
-    #     path: unifi-controller-data
-    #     type: Directory
   dnsConfig: {}
   restartPolicy: Never
 status: {}
