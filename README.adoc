@@ -10,382 +10,22 @@ ifdef::env-github[]
 :warning-caption: :warning:
 endif::[]
 :Podman: https://podman.io/[Podman]
-:podman-compose: https://github.com/containers/podman-compose[podman-compose]
 :podman-generate-systemd: https://docs.podman.io/en/latest/markdown/podman-generate-systemd.1.html[podman-generate-systemd(1)]
+:podman-play-kube: https://docs.podman.io/en/latest/markdown/podman-play-kube.1.html[podman-play-kube(1)]
 :systemd: https://systemd.io/[systemd]
 
-A {podman-compose} container configuration for the UniFi Controller.
+A Kubernetes configuration file for running the UniFi Controller with {Podman}.
 
 == Synopsis
 
 Run the UniFi controller in a rootless container via {Podman}, configure it as a systemd service, and automate image updates.
-This project uses the https://github.com/linuxserver/docker-unifi-controller[docker-unifi-controller] image provided by https://www.linuxserver.io/[LinuxServer.io] and uses the provided docker-compose with minimal changes.
+This project uses the https://github.com/linuxserver/docker-unifi-controller[docker-unifi-controller] image provided by https://www.linuxserver.io/[LinuxServer.io] and uses a Kubernetes configuration file similar to the provided docker-compose.
 
-== Requirements
+== Getting Started
 
-This project uses Podman, Python, and {podman-compose}.
-Follow the https://podman.io/getting-started/installation[Podman installation instructions] to install Podman.
-You can get up and running quickly by just installing the latest podman-compose with pip.
-Alternatively, you can use the exact versions of Python and podman-compose configured in the project using asdf, direnv, and Pipenv.
 The instructions here have been tested on Ubuntu 18.04.
 
-=== Quick Start
-
-To get started, you just need Python, pip, and podman-compose.
-
-. Install Python 3 and pip.
-+
-[source,sh]
-----
-➜ sudo apt -y install python3 python3-pip
-----
-
-. Install the latest development version of podman-compose with pip.
-+
-[source,sh]
-----
-➜ pip3 install --user https://github.com/containers/podman-compose/archive/devel.tar.gz
-----
-
-. This installs podman-compose in `~/.local/bin`, so make sure that this is in your `PATH`.
-
-See <<Setup>> to fetch this repository and get your container up and running.
-
-=== asdf, direnv, & Pipenv
-
-asdf is used to manage the version of the Python runtime and Pipenv manages the project's virtual environment and Python dependencies.
-Additionally, direnv automates creation and activation of the Python virtual environment when inside the project directory.
-These tools produce a _fairly_ reproducible runtime environment for the project.
-
-. Install the dependencies needed for asdf.
-+
-[source,sh]
-----
-➜ sudo apt -y install curl git
-----
-
-. If you use Btrfs and want to exclude the `~/.asdf` directory from snapshots of your home directory, create a subvolume for it.
-+ 
-[source,sh]
-----
-➜ btrfs subvolume create ~/.asdf
-----
-
-. Pull down the https://github.com/asdf-vm/asdf[asdf repository] in to your home directory.
-+
-[source,sh]
-----
-➜ git clone https://github.com/asdf-vm/asdf.git ~/.asdf
-----
-
-. Checkout the latest version of asdf.
-+
---
-_fish_::
-+
-[source,sh]
-----
-➜ git -C ~/.asdf switch --detach (git -C ~/.asdf describe --abbrev=0 --tags)
-HEAD is now at c6145d0 Update version to 0.8.0
-----
-
-_Bash / ZSH_::
-+
-[source,bash]
-----
-➜ git -C ~/.asdf switch --detach $(git -C ~/.asdf describe --abbrev=0 --tags)
-HEAD is now at c6145d0 Update version to 0.8.0
-----
---
-
-. Enable asdf in your shell.
-+
---
-_fish_::
-+
-[source,sh]
-----
-➜ mkdir -p ~/.config/fish/conf.d; \
-  and echo "source ~/.asdf/asdf.fish" > ~/.config/fish/conf.d/asdf.fish
-----
-
-_Bash_::
-+
-[source,bash]
-----
-➜ echo '. $HOME/.asdf/asdf.sh' >> ~/.bashrc
-----
-
-_ZSH_::
-+
-[source,zsh]
-----
-➜ echo '. $HOME/.asdf/asdf.sh' >> ~/.zshrc
-----
---
-
-. Install shell completions for asdf.
-+
---
-_fish_::
-+
-[source,sh]
-----
-➜ mkdir -p ~/.config/fish/completions; \
-  and ln -s ~/.asdf/completions/asdf.fish ~/.config/fish/completions
-----
-
-_Bash_::
-+
-[source,bash]
-----
-➜ echo '. $HOME/.asdf/completions/asdf.bash' >> ~/.bashrc
-----
-
-_ZSH_::
-+
-[source,zsh]
-----
-➜ echo -e 'fpath=(${ASDF_DIR}/completions $fpath)\nautoload -Uz compinit\ncompinit' >> ~/.zshrc
-----
---
-
-. To make asdf available, reload your shell.
-+
---
-_fish_::
-+
-[source,sh]
-----
-➜ exec fish
-----
-
-_Bash_::
-+
-[source,bash]
-----
-➜ source ~/.bashrc
-----
-
-_ZSH_::
-+
-[source,zsh]
-----
-➜ source ~/.zshrc
-----
---
-
-. Install the necessary dependencies to build Python which are helpfully documented in the https://github.com/pyenv/pyenv/wiki#suggested-build-environment[Pyenv Wiki].
-+
-[source,sh]
-----
-➜ sudo apt -y install make build-essential libssl-dev zlib1g-dev libbz2-dev \
-  libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev xz-utils \
-  tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
-----
-
-. Add the https://github.com/danhper/asdf-python[Python plugin] to asdf.
-+
-[source,sh]
-----
-➜ asdf plugin add python
-----
-
-. Before installing Pipenv, configure the default _global_ Python version for the user.
-+
---
-You can use the system version of Python by default or another version of your choice.
-
-[IMPORTANT]
-====
-Whenever the user's global version of Python is updated, Pipenv must be reinstalled which may require that all virtual environments be rebuilt.
-====
-
---
-
-** Use the system's Python as the default.
-
-... Ubuntu installs Python as either `python2` or `python3` on the system.
-+
---
-This means that asdf won't be able to detect the system version of python.
-Install the Python package `python-is-python3` to install a `python` executable for the system which uses `python3`.
-
-[source,sh]
-----
-➜ sudo apt -y install python-is-python3
-----
---
-
-... Install pip and venv because they are not installed by default on Ubuntu.
-+
-[source,sh]
-----
-➜ sudo apt -y install python3-pip python3-venv
-----
-
-... Set the user's Python to the system-wide version.
-+
-[source,sh]
-----
-➜ asdf global python system
-----
-
-** Or, you can use another version of Python for your user such as the latest and greatest version.
-
-... Build and install the latest version of Python.
-+
-[source,sh]
-----
-➜ asdf install python latest
-----
-
-... Set the user's Python to the latest version available at this time.
-+
---
-_fish_::
-+
-[source,sh]
-----
-➜ asdf global python (asdf latest python)
-----
-
-_Bash / ZSH_::
-+
-[source,bash]
-----
-➜ asdf global python $(asdf latest python)
-----
---
-
-. Install https://pipxproject.github.io/pipx/[pipx] for installing Pipenv in an isolated environment.
-+
-[source,sh]
-----
-➜ python -m pip install --user pipx
-----
-
-. Add the directory where pip installs executables for the local user to `PATH`.
-+
-[source,sh]
-----
-➜ python -m pipx ensurepath
-----
-
-. To make executables installed by pipx available, reload your shell.
-+
---
-_fish_::
-+
-[source,sh]
-----
-➜ exec fish
-----
-
-_Bash_::
-+
-[source,bash]
-----
-➜ source ~/.bashrc
-----
-
-_ZSH_::
-+
-[source,zsh]
-----
-➜ source ~/.zshrc
-----
---
-
-. Install Pipenv.
-+
-[source,sh]
-----
-➜ python -m pipx install pipenv
-----
-
-. Add the direnv plugin to asdf.
-+
-[source,sh]
-----
-➜ asdf plugin add direnv
-----
-
-. Integrate direnv with your shell.
-+
---
-_fish_::
-+
-[source,sh]
-----
-➜ mkdir -p ~/.config/fish/conf.d; \
-  and echo "asdf exec direnv hook fish | source" > ~/.config/fish/conf.d/direnv.fish
-----
-
-_Bash_::
-+
-[source,bash]
-----
-➜ echo 'eval "$(asdf exec direnv hook bash)"' >> ~/.bashrc
-----
-
-_ZSH_::
-+
-[source,zsh]
-----
-➜ echo 'eval "$(asdf exec direnv hook zsh)"' >> ~/.zshrc
-----
---
-
-. Make the asdf feature, i.e. the command `use asdf`, available in direnv.
-+
---
-_fish_::
-+
-[source,sh]
-----
-➜ mkdir -p ~/.config/direnv; \
-  and echo 'source "$(asdf direnv hook asdf)"' >> ~/.config/direnv/direnvrc
-----
-
-_Bash / ZSH_::
-+
-[source,bash]
-----
-➜ mkdir -p ~/.config/direnv; echo 'source "$(asdf direnv hook asdf)"' >> ~/.config/direnv/direnvrc
-----
-
-NOTE: The `direnvrc` file should only use Bash syntax.
---
-
-. Add completions for Pipenv to your shell.
-+
---
-_fish_::
-+
-[source,sh]
-----
-➜ echo "eval (pipenv --completion)" > ~/.config/fish/completions/pipenv.fish
-----
-
-_Bash_::
-+
-[source,bash]
-----
-➜ echo 'eval "$(pipenv --completion)"' >> ~/.bashrc
-----
-
-_ZSH_::
-+
-[source,zsh]
-----
-➜ echo 'eval "$(pipenv --completion)"' >> ~/.zshrc
-----
---
-
-== Setup
-
-Now that all the initial dependencies are installed, it's time to get everything specific to the project prepared.
+. Follow the https://podman.io/getting-started/installation[Podman installation instructions] to install Podman.
 
 . Clone this project's Git repository.
 +
@@ -394,89 +34,20 @@ Now that all the initial dependencies are installed, it's time to get everything
 ➜ git clone https://github.com/jwillikers/unifi-controller.git ~/Projects/unifi-controller
 ----
 
-. Change to the project directory.
-+
-[source,sh]
-----
-➜ cd ~/Projects/unifi-controller
-----
-
-If you're using asdf, follow these additional steps to setup the project environment.
-
-. Run asdf to automatically install Python and direnv.
-+
---
-[source,sh]
-----
-➜ asdf install
-----
-
-[TIP]
-====
-If you haven't set a default global version of direnv, you should do so now.
-
-_fish_::
-+
-[source,sh]
-----
-➜ asdf global direnv (asdf list direnv | awk 'FNR <= 1')
-----
-
-_Bash / ZSH_::
-+
-[source,sh]
-----
-➜ asdf global direnv $(asdf list direnv | awk 'FNR <= 1')
-----
-====
---
-
-. Reload your shell for direnv to be available.
-+
---
-_fish_::
-+
-[source,sh]
-----
-➜ exec fish
-direnv: error /home/ubuntu/Source/MyProject/.envrc is blocked. Run `direnv allow` to approve its content
-----
-
-_Bash_::
-+
-[source,bash]
-----
-➜ source ~/.bashrc
-direnv: error /home/ubuntu/Source/MyProject/.envrc is blocked. Run `direnv allow` to approve its content
-----
-
-_ZSH_::
-+
-[source,zsh]
-----
-➜ source ~/.zshrc
-direnv: error /home/ubuntu/Source/MyProject/.envrc is blocked. Run `direnv allow` to approve its content
-----
---
-
-. Enable automatic loading of the project's environment.
-+
-[source,sh]
-----
-➜ direnv allow
-----
-
-Now, whenever you change into the project directory, the project's virtual environment will automatically be loaded for you.
-
-== Run
-
-. From within the project directory, execute podman-compose to create the _unifi-controller_ pod.
+. Use {podman-play-kube} to create the _unifi-controller_ pod.
 The instructions here use rootless Podman containers running under the current user for increased security.
 +
+--
 [source,sh]
 ----
-➜ podman-compose up -d
+➜ podman play kube ~/Projects/unifi-controller/unifi-controller.yml
 ----
+
+[NOTE]
+====
+The container will store persistent data in a Podman volume with the same name as the _Persistent Volume Claim_.
+====
+--
 
 . Access the controller's web console at https://127.0.0.1:8443/.
 
@@ -572,15 +143,10 @@ This project is built on the hard work of countless open source contributors.
 Several of these projects are enumerated below.
 
 * https://asciidoctor.org/[Asciidoctor]
-* https://asdf-vm.com/#/[asdf]
 * https://www.debian.org/[Debian]
-* https://direnv.net/[direnv]
 * https://git-scm.com/[Git]
 * https://www.linuxfoundation.org/[Linux]
-* https://pipenv.pypa.io/en/latest/[Pipenv]
 * {Podman}
-* {podman-compose}
-* https://www.python.org/[Python]
 * https://rouge.jneen.net/[Rouge]
 * https://www.ruby-lang.org/en/[Ruby]
 * {systemd}

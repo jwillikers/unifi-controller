@@ -1,0 +1,142 @@
+# Generation of Kubernetes YAML is still under development!
+#
+# Save the output of this file and use kubectl create -f to import
+# it into Kubernetes.
+#
+# Created with podman-3.0.1
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: "2021-03-13T17:21:54Z"
+  labels:
+    app: unifi-controller
+    io.containers.autoupdate: image
+  name: unifi-controller
+spec:
+  containers:
+    - command:
+        - /init
+      env:
+        - name: container
+          value: podman
+        - name: MEM_LIMIT
+          value: 1024M
+      image: ghcr.io/linuxserver/unifi-controller
+      name: unifi-controllerunifi-controller1
+      volumeMounts:
+        - mountPath: /config
+          name: unifi-data
+      ports:
+        - containerPort: 6789
+          hostPort: 6789
+          protocol: TCP
+        - containerPort: 3478
+          hostPort: 3478
+          protocol: UDP
+        - containerPort: 5514
+          hostPort: 5514
+          protocol: UDP
+        - containerPort: 8880
+          hostPort: 8880
+          protocol: TCP
+        - containerPort: 8080
+          hostPort: 8080
+          protocol: TCP
+        - containerPort: 8443
+          hostPort: 8443
+          protocol: TCP
+        - containerPort: 10001
+          hostPort: 10001
+          protocol: UDP
+        - containerPort: 8843
+          hostPort: 8843
+          protocol: TCP
+        - containerPort: 1900
+          hostPort: 1900
+          protocol: UDP
+      resources: {}
+      securityContext:
+        allowPrivilegeEscalation: true
+        capabilities:
+          drop:
+            - CAP_MKNOD
+            - CAP_NET_RAW
+            - CAP_AUDIT_WRITE
+        privileged: false
+        readOnlyRootFilesystem: false
+        seLinuxOptions: {}
+      workingDir: /usr/lib/unifi
+  volumes:
+    # See https://github.com/containers/podman/pull/8497
+    # Uses a named volume using the claimName.
+    - name: unifi-data
+      persistentVolumeClaim:
+        claimName: unifi-controller-data
+    # Creates a named volume using path if it doesn't exist (Not sure if CreateOrDirectory has the same behavior)
+    # - name: unifi-data
+    #   hostPath:
+    #     path: unifi-controller-data
+    #     type: Directory
+  dnsConfig: {}
+  restartPolicy: Never
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: "2021-03-13T17:21:54Z"
+  labels:
+    app: unifi-controller
+  name: unifi-controller
+spec:
+  ports:
+    - name: "6789"
+      nodePort: 31967
+      port: 6789
+      protocol: TCP
+      targetPort: 0
+    - name: "3478"
+      nodePort: 31749
+      port: 3478
+      protocol: UDP
+      targetPort: 0
+    - name: "5514"
+      nodePort: 32160
+      port: 5514
+      protocol: UDP
+      targetPort: 0
+    - name: "8880"
+      nodePort: 32057
+      port: 8880
+      protocol: TCP
+      targetPort: 0
+    - name: "8080"
+      nodePort: 30219
+      port: 8080
+      protocol: TCP
+      targetPort: 0
+    - name: "8443"
+      nodePort: 31168
+      port: 8443
+      protocol: TCP
+      targetPort: 0
+    - name: "10001"
+      nodePort: 30119
+      port: 10001
+      protocol: UDP
+      targetPort: 0
+    - name: "8843"
+      nodePort: 31552
+      port: 8843
+      protocol: TCP
+      targetPort: 0
+    - name: "1900"
+      nodePort: 30990
+      port: 1900
+      protocol: UDP
+      targetPort: 0
+  selector:
+    app: unifi-controller
+  type: NodePort
+status:
+  loadBalancer: {}

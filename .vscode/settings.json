@@ -1,6 +1,7 @@
 {
     "cSpell.words": [
         "Btrfs",
+        "Kubernetes",
         "Podman's",
         "adoc",
         "asdf",
@@ -10,6 +11,7 @@
         "ensurepath",
         "envrc",
         "eval",
+        "kube",
         "linuxserver",
         "mkdir",
         "pipenv",
